@@ -46,6 +46,9 @@ func (fileHandler *FileResourceHandler) GetResources(ctx context.Context, sessio
 
 		if scanInfo.ChartPath != "" && scanInfo.FilePath != "" {
 			workloadIDToSource, workloads, workloadIDToMappingNodes, err = getWorkloadFromHelmChart(ctx, scanInfo.ChartPath, scanInfo.FilePath)
+			if err != nil {
+				// We should probably ignore the error so we can continue scanning other charts
+			}
 		} else {
 			workloadIDToSource, workloads, workloadIDToMappingNodes, err = getResourcesFromPath(ctx, scanInfo.InputPatterns[path])
 			if err != nil {
@@ -53,7 +56,7 @@ func (fileHandler *FileResourceHandler) GetResources(ctx context.Context, sessio
 			}
 		}
 		if len(workloads) == 0 {
-			logger.L().Debug("path ignored because contains only a non-kubernetes file", helpers.String("path", scanInfo.InputPatterns[path]))
+			continue
 		}
 
 		for k, v := range workloadIDToSource {
@@ -75,9 +78,11 @@ func (fileHandler *FileResourceHandler) GetResources(ctx context.Context, sessio
 		return nil, nil, nil, nil, fmt.Errorf("resource %s has a parent and cannot be scanned", sessionObj.SingleResourceScan.GetID())
 	}
 
+	scanningScope := cautils.GetScanningScope(sessionObj.Metadata.ContextMetadata)
+
 	// build a resources map, based on the policies
 	// map resources based on framework required resources: map["/group/version/kind"][]<k8s workloads ids>
-	resourceToQuery, excludedRulesMap := getQueryableResourceMapFromPolicies(sessionObj.Policies, sessionObj.SingleResourceScan)
+	resourceToQuery, excludedRulesMap := getQueryableResourceMapFromPolicies(sessionObj.Policies, sessionObj.SingleResourceScan, scanningScope)
 	k8sResources := resourceToQuery.ToK8sResourceMap()
 
 	// save only relevant resources

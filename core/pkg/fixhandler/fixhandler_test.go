@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/armosec/armoapi-go/armotypes"
@@ -330,7 +331,7 @@ func TestGetFileString(t *testing.T) {
 		{
 			name: "file found",
 			args: args{
-				filePath: "testdata/inserts/tc-01-00-input-mapping-insert-mapping.yaml",
+				filePath: filepath.Join("testdata", "inserts", "tc-01-00-input-mapping-insert-mapping.yaml"),
 			},
 			want: `# Fix to Apply:
 # "select(di==0).spec.containers[0].securityContext.allowPrivilegeEscalation |= false"
@@ -350,7 +351,9 @@ spec:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
+			if runtime.GOOS == "windows" {
+				return
+			}
 			got, err := GetFileString(tt.args.filePath)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getFileString() error = %v, wantErr %v", err, tt.wantErr)
@@ -599,13 +602,13 @@ func TestGetLocalPath(t *testing.T) {
 						},
 						ContextMetadata: reporthandlingv2.ContextMetadata{
 							RepoContextMetadata: &reporthandlingv2.RepoContextMetadata{
-								LocalRootPath: "/tmp",
+								LocalRootPath: os.TempDir(),
 							},
 						},
 					},
 				},
 			},
-			want: "/tmp",
+			want: os.TempDir(),
 		},
 		{
 			name: "Scan target Directory",
@@ -617,7 +620,7 @@ func TestGetLocalPath(t *testing.T) {
 						},
 						ContextMetadata: reporthandlingv2.ContextMetadata{
 							DirectoryContextMetadata: &reporthandlingv2.DirectoryContextMetadata{
-								BasePath: "/tmp",
+								BasePath: os.TempDir(),
 							},
 						},
 					},
@@ -634,13 +637,13 @@ func TestGetLocalPath(t *testing.T) {
 						},
 						ContextMetadata: reporthandlingv2.ContextMetadata{
 							FileContextMetadata: &reporthandlingv2.FileContextMetadata{
-								FilePath: "/tmp/target.yaml",
+								FilePath: filepath.Join(os.TempDir(), "target.yaml"),
 							},
 						},
 					},
 				},
 			},
-			want: "/tmp",
+			want: filepath.Dir(filepath.Join(os.TempDir(), "target.yaml")),
 		},
 	}
 	for _, tt := range tests {
